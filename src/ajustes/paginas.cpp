@@ -639,6 +639,8 @@ static void TurnShellOff() {
     if (HWND h = FindWindowW(L"ShellMensagens", nullptr)) PostMessageW(h, WM_HOTKEY, 1, 0);  // o mesmo do "sair do Shell"
 }
 
+static void ReiniciaShell();  // (definida em Experimental, mais abaixo)
+
 Page Geral() {
     Page p;
     if (Setting(L"liquid_glass", L"0") == L"1" && Setting(L"golden_gate", L"0") == L"1") {
@@ -729,6 +731,19 @@ Page Geral() {
                            Button(L"Parar de usar o WacOS", L"Desligar…", [] { TurnShellOff(); },
                                   L"Fecha o Shell e devolve a barra de tarefas e o Explorador do Windows") }, L"WacOS",
                          L"Só o Dock e a barra de menus: a área de trabalho, as pastas, o Alt+Tab, a tecla Windows, a captura de tela e as barras de título ficam com o Windows."));
+    // As janelas do Windows que o WacOS refaz no estilo do Mac, cada uma com o seu botão (antes só pelo ajustes.txt).
+    // Desligado, fica a do Windows. Abrir/Salvar pelo Finder: issues #15 e #35 (o arquivo às vezes ia para outra pasta
+    // ou ficava com outro nome); o gancho só é posto ao abrir o Shell, por isso reinicia
+    p.groups.push_back(G({ Toggle(L"Usar o Finder para Abrir e Salvar", [] { return Setting(L"dialogo_por_fora", L"1") == L"1"; },
+                                  [](bool on) { SetSetting(L"dialogo_por_fora", on ? L"1" : L"0"); ReiniciaShell(); },
+                                  L"Desligado, os apps usam a janela Abrir/Salvar do Windows. Ao mudar, o WacOS reinicia (os apps continuam abertos)."),
+                           Toggle(L"Avisos e perguntas no estilo do Mac", [] { return Setting(L"alertas_mac", L"1") != L"0"; },
+                                  [](bool on) { SetSetting(L"alertas_mac", on ? L"1" : L"0"); },
+                                  L"Desligado, as caixas de mensagem dos apps e do Explorador ficam como no Windows."),
+                           Toggle(L"Progresso de cópia no estilo do Mac", [] { return Setting(L"progresso_mac", L"1") != L"0"; },
+                                  [](bool on) { SetSetting(L"progresso_mac", on ? L"1" : L"0"); },
+                                  L"Desligado, copiar, mover e apagar mostram a janela de progresso do Windows.") },
+                         L"Janelas do Windows"));
     return p;
 }
 
