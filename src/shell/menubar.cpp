@@ -1351,7 +1351,7 @@ void Run(int id, App* app) {
     if (id >= 1000 && id < 1100) return;
     switch (id) {
     case 100: sobre::Show(); break;
-    case 101: shell::OpenSettings(L""); break;
+    case 101: shell::OpenSettings(L"", true); break;  // "Ajustes do Sistema…": o nosso app, sempre
     case 102: Open(L"ms-windows-store:"); break;
     case 103: shell::OpenForceQuit(false); break;
     case 104: SetSuspendState(FALSE, FALSE, FALSE); break;

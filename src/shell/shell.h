@@ -710,7 +710,12 @@ void Sound(const wchar_t* name);
 bool OpenCalculator(const std::wstring& target);  // alvo é a Calculadora do Windows: abre a nossa (Calculadora.exe)
 void OpenForceQuit(bool memory);  // Forçar Encerrar (Ctrl+Alt+Esc, menu da Apple); memory = "ficou sem memória"
 void OpenMonitor();  // Monitor de Atividade (Ctrl+Shift+Esc, menu da Apple)  // toca sons\mac\<name>.wav (sons do Mac), sem esperar
-void OpenSettings(const std::wstring& page);  // abre o Ajustes do Sistema (Ajustes.exe) na página  // grava em %APPDATA%\Shell\ajustes.txt
+// abre o Ajustes do Sistema (Ajustes.exe) na página. Com "Apps do Windows" > Ajustes ligado, as páginas que são do
+// Windows (rede, Bluetooth, telas, som, energia, links ms-settings:) abrem o Ajustes do Windows; nosso = o nosso sempre
+void OpenSettings(const std::wstring& page, bool nosso = false);
+// "Apps do Windows" (Ajustes > Geral): true = o app do Windows no lugar do nosso. app: captura, ajustes, gerenciador,
+// calculadora, terminal, midia, visualizar, teclas_midia (chave windows_<app> no ajustes.txt, desligada por padrão)
+bool UsarWindows(const wchar_t* app);
 // ShellExecute numa thread (com o disco ocupado ele segurou a interface 3,2 s; issue #32). Os textos são copiados na hora.
 void Abrir(const wchar_t* verb, const wchar_t* file, const wchar_t* args = nullptr, const wchar_t* dir = nullptr, int show = SW_SHOWNORMAL);
 // roda `f` na thread da interface (pela janela de mensagens): o resultado de um trabalho feito numa thread

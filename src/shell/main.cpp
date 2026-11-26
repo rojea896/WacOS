@@ -74,6 +74,15 @@ static void Inject(DWORD vk, bool up) {
 
 const UINT WM_APP_LOCK = WM_APP + 39, WM_APP_WINKEY = WM_APP + 40, WM_APP_CAPTURA = WM_APP + 41;
 static bool g_capturaExe;   // WacOSScreenshot.exe existe: Win+Shift+3/4/5/S são dela
+// "Apps do Windows" (Ajustes > Geral): os atalhos que ficam com o Windows. O gancho lê estas cópias (lidas ao abrir o
+// Shell e a cada mudança no Ajustes), não o mapa dos ajustes
+static std::atomic<bool> g_winCaptura{false}, g_winAjustes{false}, g_winGerenciador{false}, g_winTeclasMidia{false};
+static void LeAppsWindows() {
+    g_winCaptura = shell::UsarWindows(L"captura");            // Win+Shift+S: a Ferramenta de Captura (com gravação de tela)
+    g_winAjustes = shell::UsarWindows(L"ajustes");            // Win+I: o Ajustes do Windows
+    g_winGerenciador = shell::UsarWindows(L"gerenciador");    // Ctrl+Shift+Esc: o Gerenciador de Tarefas
+    g_winTeclasMidia = shell::UsarWindows(L"teclas_midia");   // tocar/pausar, próxima, anterior: o painel de mídia do Windows
+}
 // Win+Q / Win+H / Win+W = Cmd+Q / Cmd+H / Cmd+W do Mac (encerrar o app, ocultar, fechar a janela).
 // Ajustes > Teclado > "Atalhos do Mac para apps" (atalhos_mac); desligado, os atalhos voltam ao Windows
 const UINT WM_APP_MACKEY = WM_APP + 43;
@@ -138,7 +147,7 @@ static LRESULT CALLBACK KeyHook(int code, WPARAM w, LPARAM l) {
             }
             if (!down && g_spotSegura) { g_spotSegura = false; return 1; }
         }
-        if (k->dwExtraInfo != KEY_MARK && (vk == VK_MEDIA_PLAY_PAUSE || vk == VK_MEDIA_NEXT_TRACK || vk == VK_MEDIA_PREV_TRACK || vk == VK_MEDIA_STOP)) {
+        if (!g_winTeclasMidia && k->dwExtraInfo != KEY_MARK && (vk == VK_MEDIA_PLAY_PAUSE || vk == VK_MEDIA_NEXT_TRACK || vk == VK_MEDIA_PREV_TRACK || vk == VK_MEDIA_STOP)) {
             if (w == WM_KEYDOWN || w == WM_SYSKEYDOWN) PostMessageW(g_msg, WM_APP_VOLUME, vk, 0);
             return 1;
         }
@@ -221,7 +230,7 @@ static LRESULT CALLBACK KeyHook(int code, WPARAM w, LPARAM l) {
             } else if (g_altTab && !down && (k->vkCode == VK_LMENU || k->vkCode == VK_RMENU || k->vkCode == VK_MENU)) {
                 g_altTab = false;
                 PostMessageW(g_msg, WM_APP_SWITCH_END, 0, 0);  // o Alt solto segue para o Windows normalmente
-            } else if (k->vkCode == VK_ESCAPE && down && GetAsyncKeyState(VK_CONTROL) < 0 && GetAsyncKeyState(VK_SHIFT) < 0 && GetAsyncKeyState(VK_MENU) >= 0) {
+            } else if (!g_winGerenciador && k->vkCode == VK_ESCAPE && down && GetAsyncKeyState(VK_CONTROL) < 0 && GetAsyncKeyState(VK_SHIFT) < 0 && GetAsyncKeyState(VK_MENU) >= 0) {
                 // Ctrl+Shift+Esc: o nosso Monitor de Atividade no lugar do Gerenciador de Tarefas
                 PostMessageW(g_msg, WM_APP_MONITOR, 0, 0);
                 return 1;
@@ -257,7 +266,7 @@ static LRESULT CALLBACK KeyHook(int code, WPARAM w, LPARAM l) {
                 g_winCombo = g_winEaten = true;
                 PostMessageW(g_msg, WM_APP_SIRI, 0, 0);
                 return 1;
-            } else if (g_winDown && down && !g_winCombo && (k->vkCode == 'I' || k->vkCode == VK_TAB)) {
+            } else if (g_winDown && down && !g_winCombo && ((k->vkCode == 'I' && !g_winAjustes) || k->vkCode == VK_TAB)) {
                 // Win+I: o nosso Ajustes do Sistema; Win+Tab: o Mission Control (no lugar da Visão de Tarefas)
                 g_winCombo = g_winEaten = true;
                 PostMessageW(g_msg, k->vkCode == VK_TAB ? WM_APP_MISSION : WM_APP_SETTINGS, 0, 0);
@@ -302,7 +311,7 @@ static LRESULT CALLBACK KeyHook(int code, WPARAM w, LPARAM l) {
                 g_capKey = 0;  // fim do atalho da Captura de Tela: a tecla solta também é nossa
                 return 1;
             } else if (g_winDown && down && GetAsyncKeyState(VK_SHIFT) < 0 && GetAsyncKeyState(VK_MENU) >= 0 &&
-                       (k->vkCode == '3' || k->vkCode == '4' || k->vkCode == '5' || k->vkCode == 'S') && g_capturaExe) {
+                       (k->vkCode == '3' || k->vkCode == '4' || k->vkCode == '5' || k->vkCode == 'S') && g_capturaExe && !g_winCaptura) {
                 // Win+Shift+3/4/5 (Cmd+Shift+3/4/5 do Mac) e Win+Shift+S: a nossa Captura de Tela
                 // (WacOSScreenshot.exe) no lugar da Ferramenta de Captura; com Ctrl, só área de transferência.
                 // A tecla segurada (repetição) não abre de novo; a tecla muda (0xE8) faz o Windows não ver
@@ -411,6 +420,10 @@ std::wstring shell::Setting(const wchar_t* key, const wchar_t* def) {
     return r;
 }
 
+bool shell::UsarWindows(const wchar_t* app) {
+    return shell::Setting((std::wstring(L"windows_") + app).c_str(), L"0") == L"1";
+}
+
 static std::wstring SettingsPath() {
     PWSTR p = nullptr;
     std::wstring f;
@@ -466,7 +479,7 @@ bool shell::OpenCalculator(const std::wstring& target) {
     auto ends = [&](const wchar_t* s) { size_t n = wcslen(s); return t.size() >= n && t.compare(t.size() - n, n, s) == 0; };
     bool calc = t.find(L"microsoft.windowscalculator") != std::wstring::npos || t == L"calc.exe" || t == L"calc" ||
                 ends(L"\\calc.exe") || ends(L"calculatorapp.exe") || ends(L"\\calculadora.exe") || ends(L"\\wacoscalculator.exe");
-    if (!calc) return false;
+    if (!calc || shell::UsarWindows(L"calculadora")) return false;  // "Apps do Windows" > Calculadora: segue a do Windows
     std::wstring exe = shell::dir + L"\\" EXE_CALCULATOR;
     if (GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) return false;
     shell::Abrir(L"open", exe.c_str());
@@ -476,7 +489,7 @@ bool shell::OpenCalculator(const std::wstring& target) {
 // Monitor de Atividade (MonitorAtividade.exe); sem ele, o Gerenciador de Tarefas do Windows
 void shell::OpenMonitor() {
     std::wstring exe = shell::dir + L"\\" EXE_MONITOR;
-    if (GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) exe = L"taskmgr.exe";
+    if (shell::UsarWindows(L"gerenciador") || GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) exe = L"taskmgr.exe";
     shell::Abrir(L"open", exe.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
@@ -493,7 +506,23 @@ void shell::Sound(const wchar_t* name) {
     PlaySoundW((root + L"\\sons\\mac\\" + name + L".wav").c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT);
 }
 
-void shell::OpenSettings(const std::wstring& page) {
+// "Apps do Windows" > Ajustes: as nossas páginas que existem no Ajustes do Windows. As que são do WacOS (Dock, Ilha,
+// Central de Controle, fundo, notificações, teclado com os atalhos do Mac...) continuam no nosso
+static const wchar_t* PaginaDoWindows(const std::wstring& page) {
+    static const struct { const wchar_t* nossa; const wchar_t* win; } mapa[] = {
+        { L"", L"ms-settings:" }, { L"wifi", L"ms-settings:network-wifi" }, { L"rede", L"ms-settings:network" },
+        { L"bluetooth", L"ms-settings:bluetooth" }, { L"telas", L"ms-settings:display" }, { L"som", L"ms-settings:sound" },
+        { L"energia", L"ms-settings:powersleep" },
+    };
+    for (auto& m : mapa) if (page == m.nossa) return m.win;
+    return nullptr;
+}
+
+void shell::OpenSettings(const std::wstring& page, bool nosso) {
+    if (!nosso && shell::UsarWindows(L"ajustes")) {
+        if (page.rfind(L"ms-settings:", 0) == 0) { shell::Abrir(L"open", page.c_str()); return; }
+        if (const wchar_t* win = PaginaDoWindows(page)) { shell::Abrir(L"open", win); return; }
+    }
     std::wstring args = page.empty() ? L"" : (page.rfind(L"ms-settings:", 0) == 0 ? page : L"--pagina=" + page);
     shell::Abrir(L"open", (shell::dir + L"\\" EXE_SETTINGS).c_str(), args.c_str());
 }
@@ -1162,6 +1191,7 @@ static LRESULT CALLBACK MsgProc(HWND h, UINT m, WPARAM w, LPARAM l) {
     if (m == reload && reload) {  // o Ajustes do Sistema gravou ajustes.txt
         g_macKeys = !shell::SoDock() && shell::Setting(L"atalhos_mac", L"1") == L"1"; g_winHVoz = shell::Setting(L"atalho_win_h", L"ocultar") == L"voz"; g_seletorMac = shell::Setting(L"seletor_mac", L"1") != L"0";
         g_spotAtalho = LeAtalhoSpot();
+        LeAppsWindows();
         static int lastLiquid = -1;
         if (lastLiquid < 0) lastLiquid = liquid::Leopard() ? 3 : liquid::Golden() ? 2 : liquid::On();
         static int lastTheme = -1;  // 0 Sequoia, 1 Tahoe, 2 Golden Gate, 3 Leopard
@@ -1497,6 +1527,7 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE, PWSTR, int) {
     g_macKeys = !soDock && shell::Setting(L"atalhos_mac", L"1") == L"1"; g_winHVoz = shell::Setting(L"atalho_win_h", L"ocultar") == L"voz"; g_seletorMac = shell::Setting(L"seletor_mac", L"1") != L"0";
     g_spotAtalho = LeAtalhoSpot();
     g_capturaExe = !soDock && GetFileAttributesW((shell::dir + L"\\" EXE_SCREENSHOT).c_str()) != INVALID_FILE_ATTRIBUTES;
+    LeAppsWindows();
     if (!soDock) EnsureScreenshot();
     g_volumeKeys = shell::Setting(L"volume_mac", L"1") == L"1";
     if (g_fullHook || g_volumeKeys || (!soDock && shell::Setting(L"bloqueio", L"1") != L"0")) std::thread(KeyThread).detach();  // sem o Launchpad: só barra teclas com a tela travada
@@ -1593,6 +1624,7 @@ int shell::RodarNativo(HINSTANCE hi, const std::wstring& dirBin, const std::wstr
     g_fullHook = shell::Setting(L"tecla_windows_launchpad", L"1") == L"1";
     g_macKeys = shell::Setting(L"atalhos_mac", L"1") == L"1"; g_winHVoz = shell::Setting(L"atalho_win_h", L"ocultar") == L"voz"; g_seletorMac = shell::Setting(L"seletor_mac", L"1") != L"0";
     g_capturaExe = GetFileAttributesW((shell::dir + L"\\" EXE_SCREENSHOT).c_str()) != INVALID_FILE_ATTRIBUTES;
+    LeAppsWindows();
     EnsureScreenshot();
     g_volumeKeys = shell::Setting(L"volume_mac", L"1") == L"1";
     if (g_fullHook || g_volumeKeys) std::thread(KeyThread).detach();

@@ -408,6 +408,7 @@ void OpenSub(Level* l, int idx) {
 // Itens do menu da Área de Trabalho (Explorer) que abrem o Ajustes do Windows: vão para o nosso Ajustes
 // do Sistema, na página certa. "" = não é um desses.
 std::wstring OurSettingsPage(Level* l, const Item& it) {
+    if (shell::UsarWindows(L"ajustes")) return L"";  // "Apps do Windows" > Ajustes: o item faz o que faz no Windows
     DWORD pid = 0; GetWindowThreadProcessId(l->native, &pid);
     HANDLE hp = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     wchar_t path[MAX_PATH] = {}; DWORD n = MAX_PATH;

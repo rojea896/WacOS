@@ -7,8 +7,23 @@
 #endif
 #include <windows.h>
 #include <shellapi.h>
+#include <shlobj.h>
+#include <map>
 #include <string>
 #include "nomes.h"
+#include "ajustes_arquivo.h"
+
+// "Apps do Windows" > Música e vídeo (windows_midia=1 no ajustes.txt): o app padrão do Windows abre áudio e vídeo.
+// Lido do arquivo a cada abertura: este cabeçalho também é usado pelo Finder e pelo Fotos, que não têm o mapa do Shell
+inline bool MidiaNoWindows() {
+    PWSTR p = nullptr;
+    std::wstring f;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &p))) { f = std::wstring(p) + L"\\Shell\\ajustes.txt"; CoTaskMemFree(p); }
+    std::map<std::wstring, std::wstring> m;
+    if (f.empty() || !ajarq::Ler(f, m)) return false;
+    auto it = m.find(L"windows_midia");
+    return it != m.end() && it->second == L"1";
+}
 
 inline std::wstring AppMacPara(const std::wstring& path) {
     size_t dot = path.find_last_of(L'.'), sl = path.find_last_of(L"\\/");
@@ -18,7 +33,7 @@ inline std::wstring AppMacPara(const std::wstring& path) {
     const wchar_t* exe = nullptr;
     for (auto e : { L".mp3", L".m4a", L".flac", L".wav", L".aac", L".ogg", L".wma", L".aif", L".aiff", L".opus" }) if (x == e) exe = EXE_MUSIC;
     for (auto e : { L".mp4", L".mov", L".m4v", L".mkv", L".avi", L".wmv", L".webm", L".mpg", L".mpeg", L".3gp" }) if (x == e) exe = EXE_QUICKTIME;  // vídeo: QuickTime Player
-    if (!exe) return L"";
+    if (!exe || MidiaNoWindows()) return L"";
     wchar_t me[MAX_PATH] = {};
     GetModuleFileNameW(nullptr, me, MAX_PATH);
     std::wstring dir = me; dir = dir.substr(0, dir.find_last_of(L'\\'));

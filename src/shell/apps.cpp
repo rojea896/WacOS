@@ -753,6 +753,7 @@ static std::wstring PackIconFor(const App& a) {
     static const std::map<std::wstring, std::wstring> alias = {
         { L"msedge", L"edge" }, { L"code", L"vscode" }, { L"winword", L"word" }, { L"powerpnt", L"powerpoint" },
         { L"chrome", L"googlechrome" }, { L"notepad", L"textedit" }, { L"mspaint", L"paint" }, { L"calculatorapp", L"calculator" }, { L"calculadora", L"calculator" },
+        { L"snippingtool", L"screenshot" }, { L"screensketch", L"screenshot" }, { L"ferramentadecaptura", L"screenshot" },  // a Ferramenta de Captura com o ícone da Captura de Tela
         { L"windowsterminal", L"terminal" }, { L"wt", L"terminal" }, { L"taskmgr", L"activitymonitor" }, { L"monitoratividade", L"activitymonitor" }, { L"monitordeatividade", L"activitymonitor" }, { L"notas", L"notes" }, { L"sequoiacalculator", L"calculator" }, { L"sequoiaterminal", L"terminal" }, { L"sequoiaactivitymonitor", L"activitymonitor" }, { L"sequoianotes", L"notes" }, { L"sequoiasettings", L"settings" }, { L"systemsettings", L"settings" }, { L"ajustes", L"settings" }, { L"ajustesdosistema", L"settings" },
         { L"mbam", L"malwarebytes" }, { L"steamwebhelper", L"steam" }, { L"ms-teams", L"teams" }, { L"olk", L"outlook" },
         { L"photoshop", L"photoshop" }, { L"illustrator", L"illustrator" }, { L"sublime_text", L"sublimetext" },

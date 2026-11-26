@@ -690,6 +690,24 @@ Page Geral() {
     p.groups.push_back(G({ Uri(L"Compartilhamento", L"ms-settings:sharedexperiences", 0xE72D, C_GRAY),
                            Uri(L"Histórico de Arquivos", L"control.exe /name Microsoft.FileHistory", 0xE81C, C_GREEN),
                            Uri(L"Transferir ou Redefinir", L"ms-settings:recovery", 0xE777, C_GRAY) }));
+    // "Apps do Windows": o visual do Mac fica (barra, Dock, Launchpad, Spotlight, Central de Controle), mas o que é
+    // trabalho abre o app do Windows, que faz mais (a Ferramenta de Captura grava a tela, o Gerenciador de Tarefas tem
+    // inicialização e serviços...). Chaves windows_<app> no ajustes.txt (shell::UsarWindows), todas desligadas por padrão;
+    // o Shell relê na hora, sem reiniciar
+    auto appWin = [](const wchar_t* label, const wchar_t* app, const wchar_t* detail) {
+        std::wstring key = std::wstring(L"windows_") + app;
+        return Toggle(label, [key] { return Setting(key.c_str(), L"0") == L"1"; }, [key](bool on) { SetSetting(key.c_str(), on ? L"1" : L"0"); }, detail);
+    };
+    p.groups.push_back(G({ appWin(L"Ferramenta de Captura", L"captura", L"Win+Shift+S e a Central de Controle abrem a Ferramenta de Captura do Windows, com gravação de tela."),
+                           appWin(L"Configurações do Windows", L"ajustes", L"Win+I e os atalhos de rede, Bluetooth, telas, som e energia abrem as Configurações do Windows. O Ajustes do Sistema continua no menu da Apple."),
+                           appWin(L"Gerenciador de Tarefas", L"gerenciador", L"Ctrl+Shift+Esc, o uso do sistema na barra de menus e a Central de Controle abrem o Gerenciador de Tarefas."),
+                           appWin(L"Calculadora do Windows", L"calculadora", L"A Calculadora do Windows não é trocada pela do WacOS."),
+                           appWin(L"Terminal do Windows", L"terminal", L"A Central de Controle abre o Terminal do Windows (ou o PowerShell)."),
+                           appWin(L"Música e vídeo no app padrão", L"midia", L"Áudio e vídeo abrem no app padrão do Windows (VLC, mpv...), não no Música e no QuickTime Player."),
+                           appWin(L"Imagens, PDF e texto no app padrão", L"visualizar", L"Abrir pelo Quick Look usa o app padrão do Windows, não a Pré-Visualização e o TextEdit."),
+                           appWin(L"Teclas de mídia do Windows", L"teclas_midia", L"Tocar/pausar, próxima e anterior vão para o Windows, com o painel de mídia dele.") },
+                         L"Apps do Windows",
+                         L"O visual do Mac continua; estes abrem o app do Windows no lugar do app do WacOS."));
     p.groups.push_back(G({ Toggle(L"Abrir ao entrar no Windows", [] { return ShellAutoStartCached(); }, [](bool on) { SetShellAutoStartAsync(on); }),
                            Toggle(L"Abrir pastas no Finder", [] { return Setting(L"finder_padrao", L"1") == L"1"; },
                                   [](bool on) {
@@ -2643,7 +2661,7 @@ std::vector<SideItem>& SidebarItems() {
         { L"Bluetooth", 0xE702, C_BLUE, Bluetooth, 0, L"fone mouse teclado dispositivos", L"bluetooth" },
         { L"Rede", 0xE774, C_BLUE, Rede, 0, L"ethernet internet ip firewall vpn proxy", L"rede" },
         { battery ? L"Bateria" : L"Energia", (wchar_t)(battery ? 0xE83F : 0xE945), C_GREEN, Energia, 0, L"energia bateria repouso suspender modo desempenho", L"energia" },
-        { L"Geral", 0xE713, C_GRAY, Geral, 1, L"sobre atualização armazenamento data hora idioma início", L"geral" },
+        { L"Geral", 0xE713, C_GRAY, Geral, 1, L"sobre atualização armazenamento data hora idioma início apps do windows captura gerenciador de tarefas calculadora terminal", L"geral" },
         { L"Acessibilidade", 0xE776, C_BLUE, Acessibilidade, 1, L"narrador lupa legendas", L"acessibilidade" },
         { L"Aparência", 1, 0x1C1C1E, Aparencia, 1, L"tema escuro claro destaque cor", L"aparencia" },
         { L"Apple Intelligence e Siri", 0xE720, C_PURPLE, Inteligencia, 1, L"copilot fala voz assistente", L"inteligencia" },

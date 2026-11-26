@@ -1940,8 +1940,10 @@ void ToggleCtl(const std::wstring& id) {
 void RunExtra(const std::wstring& id) {  // controle da galeria clicado (fora da edição)
     Close();
     auto open = [](const std::wstring& t, const wchar_t* args = nullptr) { shell::Abrir(L"open", t.c_str(), args, nullptr, SW_SHOWNORMAL); };
-    if (id == L"calculadora") open(shell::dir + L"\\" EXE_CALCULATOR);
-    else if (id == L"terminal") open(shell::dir + L"\\" EXE_TERMINAL);
+    // "Apps do Windows": a Calculadora e o Terminal do Windows (wt.exe; sem ele, o PowerShell)
+    auto terminalWin = [] { wchar_t p[MAX_PATH]; return SearchPathW(nullptr, L"wt.exe", nullptr, MAX_PATH, p, nullptr) ? std::wstring(L"wt.exe") : std::wstring(L"powershell.exe"); };
+    if (id == L"calculadora") open(shell::UsarWindows(L"calculadora") ? std::wstring(L"calc.exe") : shell::dir + L"\\" EXE_CALCULATOR);
+    else if (id == L"terminal") open(shell::UsarWindows(L"terminal") ? terminalWin() : shell::dir + L"\\" EXE_TERMINAL);
     else if (id == L"monitor") shell::OpenMonitor();
     else if (id == L"bloquear") bloqueio::Lock();
     else if (id == L"mesa") mesa::WinKey('D');
@@ -2143,6 +2145,7 @@ void Click(D2D1_POINT_2F p) {
     }
     case H_SHOT: {  // Captura de Tela (a barra do Cmd+Shift+5)
         Close();
+        if (shell::UsarWindows(L"captura")) { shell::Abrir(L"open", L"ms-screenclip:", nullptr, nullptr, SW_SHOWNORMAL); return; }  // a Ferramenta de Captura
         static UINT msg = RegisterWindowMessageW(L"SequoiaCaptura");
         if (HWND w = FindWindowW(L"SequoiaCapturaMsg", nullptr)) {
             DWORD pid = 0; GetWindowThreadProcessId(w, &pid);

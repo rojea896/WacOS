@@ -418,6 +418,8 @@ std::wstring OwnApp(const std::wstring& p, std::wstring& name) {
     for (auto e : { L".mp3", L".m4a", L".flac", L".wav", L".aac", L".ogg", L".wma", L".aif", L".aiff", L".opus" }) if (x == e) { exe = EXE_MUSIC; name = Tr(L"Música"); }
     for (auto e : { L".mp4", L".mov", L".m4v", L".mkv", L".avi", L".wmv", L".webm" }) if (x == e) { exe = EXE_QUICKTIME; name = L"QuickTime Player"; }
     if (!exe) return L"";
+    // "Apps do Windows": o app padrão do Windows (o nome dele vem de DefaultAppName)
+    if (shell::UsarWindows((!wcscmp(exe, EXE_MUSIC) || !wcscmp(exe, EXE_QUICKTIME)) ? L"midia" : L"visualizar")) return L"";
     std::wstring full = shell::dir + L"\\" + exe;
     return GetFileAttributesW(full.c_str()) != INVALID_FILE_ATTRIBUTES ? full : L"";
 }

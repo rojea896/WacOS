@@ -628,6 +628,10 @@ void LoadApps() {
     for (auto& o : own) {
         std::wstring exe = shell::dir + L"\\" + o.exe;
         if (GetFileAttributesW(exe.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        // "Apps do Windows": o app do Windows aparece pelo Menu Iniciar; o nosso sai da busca
+        if ((!wcscmp(o.exe, EXE_MONITOR) && shell::UsarWindows(L"gerenciador")) || (!wcscmp(o.exe, EXE_TERMINAL) && shell::UsarWindows(L"terminal")) ||
+            (!wcscmp(o.exe, EXE_CALCULATOR) && shell::UsarWindows(L"calculadora")) || (!wcscmp(o.exe, EXE_SCREENSHOT) && shell::UsarWindows(L"captura")))
+            continue;
         std::wstring le = Lower(exe);
         // o mesmo .exe pelo atalho do Menu Iniciar (o "WacOS" do instalador) não aparece duas vezes
         found.erase(std::remove_if(found.begin(), found.end(), [&](const LApp& a) { return Lower(a.parsing) == le; }), found.end());
@@ -2390,7 +2394,7 @@ void Open(int row, bool reveal) {
         std::wstring target = L"shell:AppsFolder\\" + r.target;
         if (!reveal && r.target.size() > 4 && r.target.find(L":\\") != std::wstring::npos && !_wcsicmp(r.target.c_str() + r.target.size() - 4, L".exe")) {
             // nossos apps (e outros pelo .exe): direto
-            if (!_wcsicmp(r.target.c_str() + r.target.size() - wcslen(EXE_SETTINGS), EXE_SETTINGS)) shell::OpenSettings(L"");
+            if (!_wcsicmp(r.target.c_str() + r.target.size() - wcslen(EXE_SETTINGS), EXE_SETTINGS)) shell::OpenSettings(L"", true);
             else shell::Abrir(L"open", r.target.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
             break;
         }
