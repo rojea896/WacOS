@@ -639,8 +639,6 @@ static void TurnShellOff() {
     if (HWND h = FindWindowW(L"ShellMensagens", nullptr)) PostMessageW(h, WM_HOTKEY, 1, 0);  // o mesmo do "sair do Shell"
 }
 
-static void ReiniciaShell();  // (definida em Experimental, mais abaixo)
-
 Page Geral() {
     Page p;
     if (Setting(L"liquid_glass", L"0") == L"1" && Setting(L"golden_gate", L"0") == L"1") {
@@ -735,7 +733,13 @@ Page Geral() {
     // Desligado, fica a do Windows. Abrir/Salvar pelo Finder: issues #15 e #35 (o arquivo às vezes ia para outra pasta
     // ou ficava com outro nome); o gancho só é posto ao abrir o Shell, por isso reinicia
     p.groups.push_back(G({ Toggle(L"Usar o Finder para Abrir e Salvar", [] { return Setting(L"dialogo_por_fora", L"1") == L"1"; },
-                                  [](bool on) { SetSetting(L"dialogo_por_fora", on ? L"1" : L"0"); ReiniciaShell(); },
+                                  [](bool on) {
+                                      SetSetting(L"dialogo_por_fora", on ? L"1" : L"0");
+                                      static UINT msg = RegisterWindowMessageW(L"ShellReiniciar");
+                                      HWND sh = FindWindowExW(HWND_MESSAGE, nullptr, L"ShellMensagens", nullptr);
+                                      if (!sh) sh = FindWindowW(L"ShellMensagens", nullptr);
+                                      if (sh) PostMessageW(sh, msg, 0, 0);
+                                  },
                                   L"Desligado, os apps usam a janela Abrir/Salvar do Windows. Ao mudar, o WacOS reinicia (os apps continuam abertos)."),
                            Toggle(L"Avisos e perguntas no estilo do Mac", [] { return Setting(L"alertas_mac", L"1") != L"0"; },
                                   [](bool on) { SetSetting(L"alertas_mac", on ? L"1" : L"0"); },
